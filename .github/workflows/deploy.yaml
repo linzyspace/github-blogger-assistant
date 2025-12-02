@@ -1,1 +1,32 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker
+
+      - name: Build image
+        run: gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT }}/blog-assistant
+
+      - name: Deploy
+        run: |
+          gcloud run deploy blog-assistant \
+            --image gcr.io/${{ secrets.GCP_PROJECT }}/blog-assistant \
+            --region us-central1 \
+            --allow-unauthenticated \
+            --set-env-vars BLOGGER_API_KEY=${{ secrets.BLOGGER_API_KEY }} \
+            --set-env-vars BLOGGER_BLOG_ID=${{ secrets.BLOGGER_BLOG_ID }}
 
