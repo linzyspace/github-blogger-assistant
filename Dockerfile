@@ -7,8 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 
-ENV PORT 8080
+ENV PORT=8080
 EXPOSE 8080
 
-# Use Gunicorn in Cloud Run
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 app.main:app
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app.main:app", "--workers", "1", "--threads", "8", "--timeout", "0"]
