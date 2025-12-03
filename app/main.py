@@ -7,6 +7,14 @@ import os
 app = Flask(__name__)
 app.register_blueprint(admin_bp, url_prefix="/admin")
 
+@app.route("/", methods=["GET"])
+def root():
+    return jsonify({"status": "ok"}), 200
+
+@app.route("/health", methods=["GET"])
+def health():
+    return "ok", 200
+
 @app.route("/assistant", methods=["POST"])
 def assistant_endpoint():
     payload = request.json or {}
