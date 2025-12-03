@@ -1,11 +1,11 @@
 from flask import Flask, request, jsonify
-from assistant import get_predefined_or_blog_response
-from admin.routes import admin_bp
+from app.assistant import get_predefined_or_blog_response
+from app.admin.routes import admin_bp
 import os
 
+# Initialize Flask app
 app = Flask(__name__)
 app.register_blueprint(admin_bp, url_prefix="/admin")
-
 
 @app.route("/assistant", methods=["POST"])
 def assistant_endpoint():
@@ -26,12 +26,7 @@ def assistant_endpoint():
         "response": "No predefined answer or blog post match found."
     })
 
-
-# -------------------------------
-# RUN LOCALLY (dev mode) OR Gunicorn
-# -------------------------------
+# For local testing only
 if __name__ == "__main__":
-    # Get port from environment (Cloud Run sets PORT)
     port = int(os.environ.get("PORT", 8080))
-    # Bind to 0.0.0.0 so Cloud Run can route traffic
     app.run(host="0.0.0.0", port=port)
