@@ -26,7 +26,7 @@ def assistant_endpoint():
         "response": "No predefined answer or blog post match found."
     })
 
-# For local testing only
+# Local dev/testing only
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
