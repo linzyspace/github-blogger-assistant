@@ -1,14 +1,21 @@
-from responses import get_predefined_response
-from blog_lookup import search_blog_posts
+from app.blog_lookup import lookup_blog
+from app.categories import get_category
+from app.responses import get_response  # if you have a responses.py
 
-def get_predefined_or_blog_response(text: str, lang: str = "en"):
-    res = get_predefined_response(text, lang)
-    if res:
-        return {"type": "predefined", "response": res}
+def get_predefined_or_blog_response(topic: str, lang: str):
+    # Check predefined categories first
+    category = get_category(topic, lang)
+    if category:
+        return {"type": "predefined", "response": category}
 
-    posts = search_blog_posts(text)
-    if posts:
-        return {"type": "blog_match", "posts": posts}
+    # Fallback: check blog
+    blog_result = lookup_blog(topic, lang)
+    if blog_result:
+        return {"type": "blog", "response": blog_result}
+
+    # Optional: check responses.py
+    resp = get_response(topic, lang)
+    if resp:
+        return {"type": "response", "response": resp}
 
     return None
-
