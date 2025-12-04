@@ -1,10 +1,3 @@
-- keywords: ["seo", "search ranking"]
-  responses:
-    en: "SEO improves your website ranking."
-    id: "SEO membantu meningkatkan peringkat situs anda."
-
-- keywords: ["email marketing", "newsletter"]
-  responses:
-    en: "Email marketing is a powerful retention tool."
-    id: "Email marketing adalah alat retensi yang sangat kuat."
-
+en:
+  hello: "Hello — welcome to the blog assistant!"
+  help: "Send a JSON POST to /assistant with 'topic' and optional 'lang'."
