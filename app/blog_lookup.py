@@ -1,5 +1,12 @@
-from app.config import BLOG_API_KEY
+from app.utils import load_yaml
 
-def lookup_blog(topic: str, lang: str):
-    # Dummy implementation
-    return f"Simulated blog content for '{topic}' in '{lang}'"
+categories = load_yaml("categories.yaml")
+
+def find_blog_match(topic: str, lang: str):
+    lang_cats = categories.get(lang, {})
+
+    for key, value in lang_cats.items():
+        if key.lower() in topic.lower():
+            return f"Blog post match found: {value}"
+
+    return None
