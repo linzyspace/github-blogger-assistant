@@ -1,40 +1,44 @@
-from flask import Flask, request, jsonify
-from app.assistant import get_predefined_or_blog_response
-from app.admin.routes import admin_bp
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.middleware.cors import CORSMiddleware
+from .assistant import get_predefined_or_blog_response
+from .admin.routes import router as admin_router
 import os
 
-# Initialize Flask app
-app = Flask(__name__)
-app.register_blueprint(admin_bp, url_prefix="/admin")
+app = FastAPI(title="Blogger Assistant")
 
-@app.route("/", methods=["GET"])
+# Include admin router under /admin
+app.include_router(admin_router, prefix="/admin", tags=["admin"])
+
+# Allow simple CORS for testing; tune in production
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/", response_class=JSONResponse)
 def root():
-    return jsonify({"status": "ok"}), 200
+    return {"status": "ok"}
 
-@app.route("/health", methods=["GET"])
+@app.get("/health", response_class=PlainTextResponse)
 def health():
-    return "ok", 200
+    return "ok"
 
-@app.route("/assistant", methods=["POST"])
-def assistant_endpoint():
-    payload = request.json or {}
-    topic = payload.get("topic", "")
+@app.post("/assistant")
+async def assistant_endpoint(payload: dict):
+    topic = (payload.get("topic") or "").strip()
     lang = payload.get("lang", "en")
-
-    if not topic.strip():
-        return jsonify({"type": "error", "response": "Missing topic"}), 400
+    if not topic:
+        return JSONResponse({"type": "error", "response": "Missing topic"}, status_code=400)
 
     result = get_predefined_or_blog_response(topic, lang)
+    return JSONResponse(result)
 
-    if result:
-        return jsonify(result)
-
-    return jsonify({
-        "type": "none",
-        "response": "No predefined answer or blog post match found."
-    })
-
-# Local dev/testing only
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+# Optional: global exception handler to ensure errors get logged and return 500
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    # In production, log the exception to a structured logger
+    return JSONResponse({"detail": "Internal server error"}, status_code=500)
