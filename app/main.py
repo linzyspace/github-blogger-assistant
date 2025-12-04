@@ -69,10 +69,10 @@ PREDEFINED_REPLIES = [
     { "keywords": ["good", "great", "doing fine", "awesome", "fantastic", "happy", "cool", "excellent"], 
       "reply": "I'm glad to hear that! 😊 Hope your day keeps going well!" },
     # Neutral
-    { "keywords": ["okay", "fine", "alright", "not bad"], 
+    { "keywords": ["okay", "k", "ok" "fine", "alright", "not bad"], 
       "reply": "Got it! Thanks for letting me know 😊" },
     # Negative
-    { "keywords": ["not good", "bad", "sad", "tired", "angry", "upset"], 
+    { "keywords": ["not good", "g", "gee", "not good", "not really good", "so so", "just ok", "gosh", "bad", "sad", "tired", "angry", "upset"], 
       "reply": "Oh, I’m sorry to hear that. I’m here if you want to chat or need a joke to cheer up 😄" },
 
     # ------------------ SPORTS ------------------
