@@ -1,10 +1,13 @@
-import pathlib
 import yaml
-from typing import Any
+from pathlib import Path
 
-BASE_DIR = pathlib.Path(__file__).parent
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
 
-def load_yaml(filename: str) -> Any:
-    path = BASE_DIR / "data" / filename
-    with path.open("r", encoding="utf-8") as f:
+
+def load_yaml(filename: str):
+    path = DATA_DIR / filename
+    if not path.exists():
+        raise FileNotFoundError(f"Missing YAML file: {filename}")
+    with open(path, "r") as f:
         return yaml.safe_load(f)
