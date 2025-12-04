@@ -5,7 +5,6 @@ import uuid
 
 router = APIRouter()
 
-# Simple in-memory store for demo; replace with DB in production
 _posts = []
 
 class PostCreate(BaseModel):
