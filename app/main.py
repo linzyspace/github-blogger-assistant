@@ -1,34 +1,37 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from app.assistant import get_predefined_or_blog_response
-from app.admin.routes import router as admin_router
 
 app = FastAPI()
 
+# ------------------------------
+# CORS FIX (Blogger requires this)
+# ------------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],            # allow Blogger
+    allow_methods=["*"],            # allow POST
+    allow_headers=["*"],            # allow JSON
+    allow_credentials=False,
+)
 
-@app.get("/")
-def root():
-    return {"status": "running"}
-
+class AskPayload(BaseModel):
+    topic: str
+    lang: str = "en"
 
 @app.post("/assistant")
-async def assistant(request: Request):
-    payload = await request.json()
-    topic = payload.get("topic", "").strip()
-    lang = payload.get("lang", "en")
-
-    if not topic:
-        return {"type": "error", "response": "Missing topic"}
-
-    result = get_predefined_or_blog_response(topic, lang)
+async def assistant_endpoint(payload: AskPayload):
+    result = get_predefined_or_blog_response(payload.topic, payload.lang)
 
     if result:
         return result
 
     return {
         "type": "none",
-        "response": "No predefined answer or blog post match found."
+        "response": "No predefined answer or blog match found."
     }
 
-
-# Register /admin routes
-app.include_router(admin_router, prefix="/admin")
+@app.get("/")
+async def root():
+    return {"status": "ok"}
