@@ -1,5 +1,2 @@
-supported:
-  - en
-  - id
-default: en
-
+- en
+- es
