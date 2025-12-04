@@ -10,11 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Check out repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Authenticate Google Cloud
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v1
         with:
@@ -22,24 +20,20 @@ jobs:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
 
-      # 3️⃣ Configure Docker for Google Artifact Registry
-      - name: Configure Docker for Artifact Registry
+      - name: Configure Docker
         run: |
           gcloud auth configure-docker us-central1-docker.pkg.dev
 
-      # 4️⃣ Build Docker image
       - name: Build Docker image
         run: |
           IMAGE="us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/cloud-run/my-blog:$(date +%s)"
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
           docker build -t $IMAGE .
 
-      # 5️⃣ Push image to Artifact Registry
       - name: Push Docker image
         run: |
           docker push $IMAGE
 
-      # 6️⃣ Deploy to Cloud Run
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy my-blog \
