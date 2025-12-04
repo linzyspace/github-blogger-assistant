@@ -1,7 +1,6 @@
-blogging:
-  - seo
-  - content
-marketing:
-  - email
-  - social media
-
+programming:
+  aliases: ["code", "development"]
+  description: "Posts about programming and development."
+life:
+  aliases: ["personal", "diary"]
+  description: "Personal life and productivity posts."
