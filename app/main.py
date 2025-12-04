@@ -64,6 +64,17 @@ PREDEFINED_REPLIES = [
     { "keywords": ["omg", "wow"], "reply": "I know, right? 😄" },
     { "keywords": ["brb"], "reply": "Sure! I'll be here when you're back!" },
 
+    # ------------------ USER FEEDBACK / SENTIMENT ------------------
+    # Positive
+    { "keywords": ["good", "great", "doing fine", "awesome", "fantastic", "happy", "cool", "excellent"], 
+      "reply": "I'm glad to hear that! 😊 Hope your day keeps going well!" },
+    # Neutral
+    { "keywords": ["okay", "fine", "alright", "not bad"], 
+      "reply": "Got it! Thanks for letting me know 😊" },
+    # Negative
+    { "keywords": ["not good", "bad", "sad", "tired", "angry", "upset"], 
+      "reply": "Oh, I’m sorry to hear that. I’m here if you want to chat or need a joke to cheer up 😄" },
+
     # ------------------ SPORTS ------------------
     { "keywords": ["sports"], "reply": "Sports are a great way to stay active! What sport do you like?" },
     { "keywords": ["basketball"], "reply": "Basketball is exciting—who’s your favorite player?" },
