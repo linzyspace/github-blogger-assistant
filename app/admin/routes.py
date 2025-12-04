@@ -1,34 +1,14 @@
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
-from typing import List
-import uuid
+from fastapi import APIRouter, Request
+from app.admin.validators import validate_admin_key
 
 router = APIRouter()
 
-_posts = []
+@router.post("/add-response")
+async def add_response(request: Request):
+    validate_admin_key(request)
+    return {"status": "ok", "message": "Response added (placeholder)"}
 
-class PostCreate(BaseModel):
-    title: str
-    content: str
-    category: str | None = None
 
-class PostOut(PostCreate):
-    id: str
-
-@router.post("/posts", response_model=PostOut, status_code=status.HTTP_201_CREATED)
-def create_post(payload: PostCreate):
-    post = payload.dict()
-    post["id"] = str(uuid.uuid4())
-    _posts.append(post)
-    return post
-
-@router.get("/posts", response_model=List[PostOut])
-def list_posts():
-    return _posts
-
-@router.get("/posts/{post_id}", response_model=PostOut)
-def get_post(post_id: str):
-    for p in _posts:
-        if p["id"] == post_id:
-            return p
-    raise HTTPException(status_code=404, detail="Post not found")
+@router.get("/status")
+async def admin_status():
+    return {"admin": "online"}
