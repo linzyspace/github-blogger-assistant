@@ -1,26 +1,34 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi import FastAPI, Request
 from app.assistant import get_predefined_or_blog_response
 from app.admin.routes import router as admin_router
 
-app = FastAPI(title="Blogger Assistant")
+app = FastAPI()
 
-# Include admin router
-app.include_router(admin_router, prefix="/admin", tags=["admin"])
 
-@app.get("/", response_class=JSONResponse)
+@app.get("/")
 def root():
-    return {"status": "ok"}
+    return {"status": "running"}
 
-@app.get("/health", response_class=PlainTextResponse)
-def health():
-    return "ok"
 
 @app.post("/assistant")
-def assistant_endpoint(payload: dict):
-    topic = (payload.get("topic") or "").strip()
+async def assistant(request: Request):
+    payload = await request.json()
+    topic = payload.get("topic", "").strip()
     lang = payload.get("lang", "en")
+
     if not topic:
-        return JSONResponse({"type": "error", "response": "Missing topic"}, status_code=400)
+        return {"type": "error", "response": "Missing topic"}
+
     result = get_predefined_or_blog_response(topic, lang)
-    return JSONResponse(result)
+
+    if result:
+        return result
+
+    return {
+        "type": "none",
+        "response": "No predefined answer or blog post match found."
+    }
+
+
+# Register /admin routes
+app.include_router(admin_router, prefix="/admin")
