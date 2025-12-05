@@ -5,7 +5,7 @@ from pydantic import BaseModel
 app = FastAPI()
 
 # ------------------------------
-# CORS (Required for Blogger)
+# CORS (Required for Blogger & browser apps)
 # ------------------------------
 app.add_middleware(
     CORSMiddleware,
@@ -14,7 +14,6 @@ app.add_middleware(
     allow_headers=["*"],
     allow_credentials=False,
 )
-
 
 # ============================================================
 #   PREDEFINED QUESTIONS & ANSWERS
@@ -124,7 +123,6 @@ PREDEFINED_REPLIES = [
     { "keywords": ["salam", "assalamualaikum"], "reply": "Wa Alaikum Assalam! How can I assist?" },
 ]
 
-
 # ----------- HELPER: Match predefined answers -----------
 def match_predefined_reply(text: str):
     text = text.lower().strip()
@@ -134,7 +132,7 @@ def match_predefined_reply(text: str):
             if word in text:
                 return item["reply"]
 
-    return None  # No match
+    return None
 
 
 # ============================================================
@@ -148,7 +146,6 @@ class AskPayload(BaseModel):
 
 @app.post("/assistant")
 async def assistant(payload: AskPayload):
-    # Check predefined replies first
     predefined = match_predefined_reply(payload.topic)
 
     if predefined:
@@ -157,7 +154,7 @@ async def assistant(payload: AskPayload):
             "response": predefined
         }
 
-    # If no predefined match
+    # Future: Blogger/YouTube/Custom search logic will plug in here
     return {
         "type": "none",
         "response": "No predefined answer or blog match found."
