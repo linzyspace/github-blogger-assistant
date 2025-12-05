@@ -1,13 +1,11 @@
 import os
-from dotenv import load_dotenv
 
-# Load variables from .env file
-load_dotenv()
+# =============================
+# Blogger API Configuration
+# =============================
+BLOGGER_API_KEY = os.getenv("BLOGGER_API_KEY", "YOUR_BLOGGER_API_KEY_HERE")
+BLOGGER_BLOG_ID = os.getenv("BLOGGER_BLOG_ID", "YOUR_BLOG_ID_HERE")
 
-class Config:
-    PORT = int(os.getenv("PORT", 5000))
-    BLOG_ID = os.getenv("BLOG_ID")
-    API_KEY = os.getenv("API_KEY")
-
-config = Config()
+# YouTube (if you want later)
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 
