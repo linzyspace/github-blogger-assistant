@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Request
-from app.admin.validators import validate_admin_key
+from fastapi import APIRouter
+from pydantic import BaseModel
+from .assistant import process_user_message
 
 router = APIRouter()
 
-@router.post("/add-response")
-async def add_response(request: Request):
-    validate_admin_key(request)
-    return {"status": "ok", "message": "Response added (placeholder)"}
+class AskPayload(BaseModel):
+    topic: str
+    lang: str = "en"
 
 
-@router.get("/status")
-async def admin_status():
-    return {"admin": "online"}
+@router.post("/assistant")
+async def assistant_route(payload: AskPayload):
+    result = await process_user_message(payload.topic, payload.lang)
+    return result
