@@ -3,14 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import httpx
 
-# ===== BLOGGER CONFIG =====
+# ============================================================
+# BLOGGER CONFIG
+# ============================================================
 BLOGGER_API_KEY = "YOUR_BLOGGER_API_KEY"
 BLOGGER_BLOG_ID = "YOUR_BLOG_ID"
 
 app = FastAPI()
 
 # ------------------------------
-# CORS
+# CORS (Required for browser apps)
 # ------------------------------
 app.add_middleware(
     CORSMiddleware,
@@ -22,31 +24,40 @@ app.add_middleware(
 
 
 # ============================================================
-#   PREDEFINED QUESTIONS & ANSWERS (unchanged)
+#   PREDEFINED QUESTIONS & ANSWERS
 # ============================================================
+
 PREDEFINED_REPLIES = [
-    # ... all your predefined keywords here (unchanged)
+    # (YOUR ENTIRE PREDEFINED LIST — UNCHANGED)
+    # Just paste your whole list here.
 ]
 
 
+# ----------- HELPER: Match predefined answers -----------
 def match_predefined_reply(text: str):
     text = text.lower().strip()
+
     for item in PREDEFINED_REPLIES:
         for word in item["keywords"]:
             if word in text:
                 return item["reply"]
+
     return None
 
 
 # ============================================================
-#   BLOGGER API SEARCH
+#   BLOGGER SEARCH FUNCTION
 # ============================================================
 async def blogger_search(query: str):
     url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOGGER_BLOG_ID}/posts/search"
-    params = {"q": query, "key": BLOGGER_API_KEY}
+
+    params = {
+        "q": query,
+        "key": BLOGGER_API_KEY
+    }
 
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=15) as client:
             r = await client.get(url, params=params)
 
             if r.status_code != 200:
@@ -72,6 +83,7 @@ async def blogger_search(query: str):
 # ============================================================
 #   API ROUTES
 # ============================================================
+
 class AskPayload(BaseModel):
     topic: str
     lang: str = "en"
@@ -79,14 +91,13 @@ class AskPayload(BaseModel):
 
 @app.post("/assistant")
 async def assistant(payload: AskPayload):
-    user_text = payload.topic.lower()
+    text = payload.topic.lower().strip()
 
-    # --------------------------------------------------------
-    #  FIX B: Blogger search BEFORE predefined replies
-    # --------------------------------------------------------
-    if any(word in user_text for word in ["blog", "post", "article", "content", "show", "find"]):
+    # ============================================================
+    # FIX B — BLOGGER SEARCH RUNS BEFORE PREDEFINED
+    # ============================================================
+    if any(keyword in text for keyword in ["blog", "post", "article", "youtube", "video"]):
         blog_data = await blogger_search(payload.topic)
-
         if blog_data:
             return {
                 "type": "blogger",
@@ -95,22 +106,23 @@ async def assistant(payload: AskPayload):
                 "url": blog_data["url"]
             }
 
-    # --------------------------------------------------------
-    #  Predefined replies (unchanged)
-    # --------------------------------------------------------
-    predefined = match_predefined_reply(payload.topic)
+    # ============================================================
+    # PREDEFINED REPLY (runs only if not blogger-related)
+    # ============================================================
+    predefined = match_predefined_reply(text)
+
     if predefined:
         return {
             "type": "predefined",
             "response": predefined
         }
 
-    # --------------------------------------------------------
-    #  Nothing matched
-    # --------------------------------------------------------
+    # ============================================================
+    # NOTHING FOUND
+    # ============================================================
     return {
         "type": "none",
-        "response": "No predefined answer or blog match found."
+        "response": "Sorry, no match found. Please try again."
     }
 
 
