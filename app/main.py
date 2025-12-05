@@ -2,12 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import httpx
-import re
 
 app = FastAPI()
 
 # ------------------------------
-# CORS (Required for Blogger)
+# CORS
 # ------------------------------
 app.add_middleware(
     CORSMiddleware,
@@ -17,29 +16,28 @@ app.add_middleware(
     allow_credentials=False,
 )
 
+
 # ============================================================
-#   YOUR BLOGGER CONFIG
+#   API KEYS
 # ============================================================
 
 BLOGGER_API_KEY = "YOUR_BLOGGER_API_KEY"
-BLOG_ID = "YOUR_BLOGGER_BLOG_ID"
+BLOG_ID = "YOUR_BLOG_ID"
+
+YOUTUBE_API_KEY = "YOUR_YOUTUBE_API_KEY"
 
 
 # ============================================================
-#   PREDEFINED REPLIES
+#   PREDEFINED QUESTIONS & ANSWERS  (unchanged)
 # ============================================================
 
 PREDEFINED_REPLIES = [
     { "keywords": ["hello", "hi", "hey"], "reply": "Hello! How can I help you today? 😊" },
-    { "keywords": ["blog", "article", "post"], "reply": "Sure! Tell me the blog title or paste the link." },
-    { "keywords": ["bye"], "reply": "Goodbye! 👋" },
-    # ... (keep the rest of your existing list)
+    # ... (all your predefined replies remain unchanged)
 ]
-
 
 def match_predefined_reply(text: str):
     text = text.lower().strip()
-
     for item in PREDEFINED_REPLIES:
         for word in item["keywords"]:
             if word in text:
@@ -48,42 +46,75 @@ def match_predefined_reply(text: str):
 
 
 # ============================================================
-#   BLOGGER HELPERS
+#   BLOGGER API FETCHER
 # ============================================================
 
-# Detect blogger URL in user message
-BLOGGER_URL_REGEX = r"(https?://[A-Za-z0-9\-_.]+\.blogspot\.com/[^\s]+)"
+async def fetch_blogger_post(query: str):
+    """
+    Searches blog posts by title/content using Blogger API
+    """
 
-async def fetch_post_by_url(url: str):
-    """Extract post ID and fetch its content from Blogger API."""
-    # Blogger always contains "post/" then ID
-    match = re.search(r"/posts/(\d+)", url)
-    if not match:
-        return None
-
-    post_id = match.group(1)
-
-    api = f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts/{post_id}?key={BLOGGER_API_KEY}"
+    search_url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts/search"
+    params = {
+        "q": query,
+        "key": BLOGGER_API_KEY
+    }
 
     async with httpx.AsyncClient() as client:
-        r = await client.get(api)
-        if r.status_code == 200:
-            return r.json()
-        return None
+        r = await client.get(search_url, params=params)
+
+        if r.status_code != 200:
+            return None
+
+        data = r.json()
+
+        if "items" not in data or len(data["items"]) == 0:
+            return None
+
+        first_post = data["items"][0]
+
+        return {
+            "title": first_post.get("title"),
+            "content": first_post.get("content"),
+            "url": first_post.get("url")
+        }
 
 
-async def fetch_posts_by_keyword(keyword: str):
-    """Search Blogger posts by title using query."""
-    api = (
-        f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts/search?"
-        f"q={keyword}&key={BLOGGER_API_KEY}"
-    )
+# ============================================================
+#   YOUTUBE API FETCHER
+# ============================================================
+
+async def fetch_youtube_video(video_id: str):
+    """
+    Fetches YouTube video info like title, description, thumbnail.
+    """
+    url = "https://www.googleapis.com/youtube/v3/videos"
+
+    params = {
+        "id": video_id,
+        "key": YOUTUBE_API_KEY,
+        "part": "snippet,contentDetails"
+    }
 
     async with httpx.AsyncClient() as client:
-        r = await client.get(api)
-        if r.status_code == 200:
-            return r.json().get("items", [])
-        return []
+        r = await client.get(url, params=params)
+
+        if r.status_code != 200:
+            return None
+
+        data = r.json()
+
+        if "items" not in data or len(data["items"]) == 0:
+            return None
+
+        info = data["items"][0]["snippet"]
+
+        return {
+            "title": info["title"],
+            "description": info["description"],
+            "thumbnail": info["thumbnails"]["high"]["url"]
+        }
+
 
 
 # ============================================================
@@ -97,50 +128,40 @@ class AskPayload(BaseModel):
 
 @app.post("/assistant")
 async def assistant(payload: AskPayload):
+    text = payload.topic.lower()
 
-    user_text = payload.topic.lower().strip()
+    # 1️⃣ Try predefined replies
+    predefined = match_predefined_reply(text)
+    if predefined:
+        return {"type": "predefined", "response": predefined}
 
-    # 1️⃣ PREDEFINED REPLY CHECK
-    pre = match_predefined_reply(user_text)
-    if pre:
-        return {"type": "predefined", "response": pre}
-
-    # 2️⃣ CHECK IF USER SENT A BLOGGER URL
-    url_match = re.search(BLOGGER_URL_REGEX, user_text)
-    if url_match:
-        url = url_match.group(1)
-        post = await fetch_post_by_url(url)
-
-        if post:
-            return {
-                "type": "blog_post",
-                "title": post.get("title"),
-                "content": post.get("content"),
-                "images": [img["url"] for img in post.get("images", [])] if "images" in post else [],
-            }
-
-        return {"type": "error", "response": "Invalid Blogger post URL or post not found."}
-
-    # 3️⃣ SEARCH BLOGGER BY KEYWORD
-    posts = await fetch_posts_by_keyword(user_text)
-    if posts:
+    # 2️⃣ Try to fetch a Blogger article
+    blogger_post = await fetch_blogger_post(text)
+    if blogger_post:
         return {
-            "type": "blog_search",
-            "count": len(posts),
-            "posts": [
-                {
-                    "title": p.get("title"),
-                    "url": p.get("url"),
-                    "snippet": (p.get("content")[:200] + "...")
-                }
-                for p in posts
-            ]
+            "type": "blogger",
+            "title": blogger_post["title"],
+            "content": blogger_post["content"],
+            "url": blogger_post["url"]
         }
 
-    # 4️⃣ NOTHING FOUND
+    # 3️⃣ Try to fetch YouTube info if a YouTube link or ID is present
+    if "youtube.com" in text or "youtu.be" in text or "video:" in text:
+        # Extract video ID simplistically
+        import re
+        match = re.findall(r"(?:v=|youtu\.be/)([\w\-]+)", text)
+        if match:
+            video_data = await fetch_youtube_video(match[0])
+            if video_data:
+                return {
+                    "type": "youtube",
+                    "video": video_data
+                }
+
+    # 4️⃣ Nothing matched
     return {
         "type": "none",
-        "response": "No predefined answer or blog post found."
+        "response": "No predefined answer or content found from Blogger or YouTube."
     }
 
 
