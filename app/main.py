@@ -1,11 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import httpx
+
+# ============================================================
+#   BLOGGER API CONFIG
+# ============================================================
+BLOGGER_API_KEY = "YOUR_BLOGGER_API_KEY"
+BLOGGER_BLOG_ID = "YOUR_BLOG_ID"
+
 
 app = FastAPI()
 
 # ------------------------------
-# CORS (Required for Blogger & browser apps)
+# CORS (Required for Blogger)
 # ------------------------------
 app.add_middleware(
     CORSMiddleware,
@@ -15,8 +23,9 @@ app.add_middleware(
     allow_credentials=False,
 )
 
+
 # ============================================================
-#   PREDEFINED QUESTIONS & ANSWERS
+#   PREDEFINED QUESTIONS & ANSWERS   (UNCHANGED)
 # ============================================================
 
 PREDEFINED_REPLIES = [
@@ -64,13 +73,12 @@ PREDEFINED_REPLIES = [
     { "keywords": ["brb"], "reply": "Sure! I'll be here when you're back!" },
 
     # ------------------ USER FEEDBACK / SENTIMENT ------------------
-    # Positive
     { "keywords": ["good", "great", "doing fine", "awesome", "fantastic", "happy", "cool", "excellent"], 
       "reply": "I'm glad to hear that! 😊 Hope your day keeps going well!" },
-    # Neutral
-    { "keywords": ["okay", "k", "ok" "fine", "alright", "not bad"], 
+
+    { "keywords": ["okay", "k", "ok", "fine", "alright", "not bad"], 
       "reply": "Got it! Thanks for letting me know 😊" },
-    # Negative
+
     { "keywords": ["not good", "g", "gee", "no", "not really", "so so", "just ok", "gosh", "bad", "sad", "tired", "angry", "upset"], 
       "reply": "Oh, I’m sorry to hear that. I’m here if you want to chat or need a joke to cheer up 😄" },
 
@@ -123,16 +131,50 @@ PREDEFINED_REPLIES = [
     { "keywords": ["salam", "assalamualaikum"], "reply": "Wa Alaikum Assalam! How can I assist?" },
 ]
 
-# ----------- HELPER: Match predefined answers -----------
+
+# ----------- Match predefined answers -----------
 def match_predefined_reply(text: str):
     text = text.lower().strip()
-
     for item in PREDEFINED_REPLIES:
         for word in item["keywords"]:
             if word in text:
                 return item["reply"]
-
     return None
+
+
+# ============================================================
+#   BLOGGER SEARCH
+# ============================================================
+
+async def blogger_search(query: str):
+    """Returns title, HTML content, and URL of the first matching Blogger post."""
+    url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOGGER_BLOG_ID}/posts/search"
+
+    params = {
+        "q": query,
+        "key": BLOGGER_API_KEY
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(url, params=params)
+            if r.status_code != 200:
+                return None
+
+            data = r.json()
+            if "items" not in data or not data["items"]:
+                return None
+
+            post = data["items"][0]
+
+            return {
+                "title": post.get("title"),
+                "content": post.get("content"),  # full HTML
+                "url": post.get("url")
+            }
+
+    except Exception:
+        return None
 
 
 # ============================================================
@@ -146,15 +188,26 @@ class AskPayload(BaseModel):
 
 @app.post("/assistant")
 async def assistant(payload: AskPayload):
-    predefined = match_predefined_reply(payload.topic)
 
+    # 1️⃣ Predefined keyword check
+    predefined = match_predefined_reply(payload.topic)
     if predefined:
         return {
             "type": "predefined",
             "response": predefined
         }
 
-    # Future: Blogger/YouTube/Custom search logic will plug in here
+    # 2️⃣ Blogger article search
+    blog = await blogger_search(payload.topic)
+    if blog:
+        return {
+            "type": "blogger",
+            "title": blog["title"],
+            "content": blog["content"],   # HTML
+            "url": blog["url"]
+        }
+
+    # 3️⃣ No match
     return {
         "type": "none",
         "response": "No predefined answer or blog match found."
