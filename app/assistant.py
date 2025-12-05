@@ -1,13 +1,32 @@
-from app.responses import find_predefined_response
-from app.blog_lookup import find_blog_match
+from .responses import get_predefined_response
+from .blog_lookup import search_blogger_posts
 
-def get_predefined_or_blog_response(topic: str, lang: str):
-    predefined = find_predefined_response(topic, lang)
+
+async def process_user_message(message: str, lang: str = "en"):
+    """
+    Primary assistant logic.
+    """
+
+    # 1️⃣ Predefined responses
+    predefined = get_predefined_response(message)
     if predefined:
-        return {"type": "predefined", "response": predefined}
+        return {
+            "type": "predefined",
+            "response": predefined
+        }
 
-    blog = find_blog_match(topic, lang)
-    if blog:
-        return {"type": "blog", "response": blog}
+    # 2️⃣ Blogger Lookup
+    blogger_post = await search_blogger_posts(message)
+    if blogger_post:
+        return {
+            "type": "blogger",
+            "title": blogger_post["title"],
+            "content": blogger_post["content"],
+            "url": blogger_post["url"]
+        }
 
-    return None
+    # 3️⃣ Default
+    return {
+        "type": "none",
+        "response": "No predefined answer or blog match found."
+    }
