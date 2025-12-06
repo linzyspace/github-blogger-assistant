@@ -1,32 +1,33 @@
-from .responses import get_predefined_response
-from .blog_lookup import search_blogger_posts
+from fastapi import APIRouter
+from pydantic import BaseModel
+from responses import PREDEFINED_REPLIES
+from blog_lookup import fetch_blogger_post_content
 
+router = APIRouter()
 
-async def process_user_message(message: str, lang: str = "en"):
-    """
-    Primary assistant logic.
-    """
+class AskPayload(BaseModel):
+    topic: str
+    lang: str = "en"
 
-    # 1️⃣ Predefined responses
-    predefined = get_predefined_response(message)
+def match_predefined_reply(text: str):
+    text = text.lower().strip()
+    for item in PREDEFINED_REPLIES:
+        for word in item["keywords"]:
+            if word in text:
+                return item["reply"]
+    return None
+
+@router.post("/assistant")
+async def assistant(payload: AskPayload):
+    # 1️⃣ Predefined reply
+    predefined = match_predefined_reply(payload.topic)
     if predefined:
-        return {
-            "type": "predefined",
-            "response": predefined
-        }
+        return {"type": "predefined", "response": predefined}
 
-    # 2️⃣ Blogger Lookup
-    blogger_post = await search_blogger_posts(message)
-    if blogger_post:
-        return {
-            "type": "blogger",
-            "title": blogger_post["title"],
-            "content": blogger_post["content"],
-            "url": blogger_post["url"]
-        }
+    # 2️⃣ Blogger fallback
+    blog_post = fetch_blogger_post_content(payload.topic)
+    if blog_post:
+        return {"type": "blog", "title": blog_post["title"], "response": blog_post["content"]}
 
-    # 3️⃣ Default
-    return {
-        "type": "none",
-        "response": "No predefined answer or blog match found."
-    }
+    # 3️⃣ Fallback
+    return {"type": "none", "response": "No predefined answer or blog post found."}
