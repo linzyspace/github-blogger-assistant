@@ -1,5 +1,4 @@
-fastapi
-uvicorn[standard]
-pyyaml
-gunicorn
-httpx
+fastapi==0.115.2
+uvicorn[standard]==0.23.2
+pydantic==2.6.0
+requests==2.31.0
