@@ -1,41 +1,37 @@
-import httpx
-from .config import BLOGGER_API_KEY, BLOGGER_BLOG_ID
+import requests
+from difflib import SequenceMatcher
+from config import BLOG_ID, BLOGGER_API_KEY
 
-
-async def search_blogger_posts(query: str):
-    """
-    Search for posts on Blogger by keyword.
-    Returns: title, content (HTML), url or None
-    """
-
-    if not BLOGGER_API_KEY or not BLOGGER_BLOG_ID:
+def fetch_blogger_post_content(query: str):
+    """Fetch Blogger posts with fallback and fuzzy matching."""
+    if not BLOG_ID or not BLOGGER_API_KEY:
+        print("[ERROR] BLOG_ID or BLOGGER_API_KEY not set")
         return None
 
-    url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOGGER_BLOG_ID}/posts/search"
+    try:
+        # Search endpoint
+        search_url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts/search?q={query}&key={BLOGGER_API_KEY}"
+        res = requests.get(search_url, timeout=10).json()
+        posts = res.get("items", [])
 
-    params = {
-        "q": query,
-        "key": BLOGGER_API_KEY
-    }
+        # Fallback: list all posts
+        if not posts:
+            list_url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts?maxResults=50&key={BLOGGER_API_KEY}"
+            res = requests.get(list_url, timeout=10).json()
+            posts = res.get("items", [])
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        try:
-            r = await client.get(url, params=params)
-        except Exception:
+        if not posts:
             return None
 
-        if r.status_code != 200:
-            return None
+        # Fuzzy match
+        query_lower = query.lower()
+        def score(post):
+            text = f"{post.get('title','')} {post.get('content','')}".lower()
+            return SequenceMatcher(None, query_lower, text).ratio()
 
-        data = r.json()
+        best_post = max(posts, key=score)
+        return {"title": best_post.get("title",""), "content": best_post.get("content","")}
 
-        if "items" not in data or len(data["items"]) == 0:
-            return None
-
-        post = data["items"][0]
-
-        return {
-            "title": post.get("title", ""),
-            "content": post.get("content", ""),
-            "url": post.get("url", "")
-        }
+    except Exception as e:
+        print(f"[ERROR] Blogger API exception: {e}")
+        return None
