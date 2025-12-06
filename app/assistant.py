@@ -10,6 +10,7 @@ class AskPayload(BaseModel):
     lang: str = "en"
 
 def match_predefined_reply(text: str):
+    """Return predefined reply if keyword matches"""
     text = text.lower().strip()
     for item in PREDEFINED_REPLIES:
         for word in item["keywords"]:
@@ -19,7 +20,7 @@ def match_predefined_reply(text: str):
 
 @router.post("/assistant")
 async def assistant(payload: AskPayload):
-    # 1️⃣ Predefined reply
+    # 1️⃣ Check predefined replies
     predefined = match_predefined_reply(payload.topic)
     if predefined:
         return {"type": "predefined", "response": predefined}
