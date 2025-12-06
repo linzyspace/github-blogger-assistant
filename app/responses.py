@@ -1,12 +1,8 @@
-from app.utils import load_yaml
-
-responses = load_yaml("responses.yaml")
-
-def find_predefined_response(topic: str, lang: str):
-    lang_responses = responses.get(lang, {})
-
-    for key, value in lang_responses.items():
-        if key.lower() in topic.lower():
-            return value
-
-    return None
+# Predefined replies
+PREDEFINED_REPLIES = [
+    { "keywords": ["hello", "hi", "hey"], "reply": "Hello! How can I help you today? 😊" },
+    { "keywords": ["bye", "goodbye"], "reply": "Goodbye! Take care! 👋" },
+    { "keywords": ["how are you", "how r u"], "reply": "I'm doing great! How about you?" },
+    { "keywords": ["thanks", "thank you"], "reply": "You're welcome! 😊" },
+    # Add more as needed
+]
