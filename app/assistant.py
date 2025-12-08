@@ -1,34 +1,13 @@
-from fastapi import APIRouter
-from pydantic import BaseModel
-from responses import PREDEFINED_REPLIES
-from blog_lookup import fetch_blogger_post_content
+from app.responses import find_predefined_response
+from app.blog_lookup import find_blog_match
 
-router = APIRouter()
-
-class AskPayload(BaseModel):
-    topic: str
-    lang: str = "en"
-
-def match_predefined_reply(text: str):
-    """Return predefined reply if keyword matches"""
-    text = text.lower().strip()
-    for item in PREDEFINED_REPLIES:
-        for word in item["keywords"]:
-            if word in text:
-                return item["reply"]
-    return None
-
-@router.post("/assistant")
-async def assistant(payload: AskPayload):
-    # 1️⃣ Check predefined replies
-    predefined = match_predefined_reply(payload.topic)
+def get_predefined_or_blog_response(topic: str, lang: str):
+    predefined = find_predefined_response(topic, lang)
     if predefined:
         return {"type": "predefined", "response": predefined}
 
-    # 2️⃣ Blogger fallback
-    blog_post = fetch_blogger_post_content(payload.topic)
-    if blog_post:
-        return {"type": "blog", "title": blog_post["title"], "response": blog_post["content"]}
+    blog = find_blog_match(topic, lang)
+    if blog:
+        return {"type": "blog", "response": blog}
 
-    # 3️⃣ Fallback
-    return {"type": "none", "response": "No predefined answer or blog post found."}
+    return None
