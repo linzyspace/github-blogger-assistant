@@ -1,12 +1,13 @@
 FROM python:3.11-slim
 
 WORKDIR /app
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
 
-# Cloud Run provides PORT environment variable
+COPY app ./app
+
 ENV PORT 8080
+EXPOSE 8080
 
-# Shell form to expand $PORT dynamically
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
+CMD ["sh", "-c", "gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 0"]
