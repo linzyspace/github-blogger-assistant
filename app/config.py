@@ -1,8 +1,9 @@
 import os
 
-# Blogger API configuration
-BLOG_ID = os.getenv("BLOG_ID")
-BLOGGER_API_KEY = os.getenv("BLOGGER_API_KEY")
+require('dotenv').config();
 
-if not BLOG_ID or not BLOGGER_API_KEY:
-    print("[WARNING] BLOG_ID or BLOGGER_API_KEY not set. Blogger fallback will not work.")
+module.exports = {
+  PORT: process.env.PORT || 5000,
+  BLOG_ID: process.env.BLOG_ID,
+  API_KEY: process.env.API_KEY
+};
