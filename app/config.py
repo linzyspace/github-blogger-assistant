@@ -1,9 +1,13 @@
 import os
+from dotenv import load_dotenv
 
-require('dotenv').config();
+# Load variables from .env file
+load_dotenv()
 
-module.exports = {
-  PORT: process.env.PORT || 8080,
-  BLOG_ID: process.env.BLOG_ID,
-  API_KEY: process.env.API_KEY
-};
+class Config:
+    PORT = int(os.getenv("PORT", 5000))
+    BLOG_ID = os.getenv("BLOG_ID")
+    API_KEY = os.getenv("API_KEY")
+
+config = Config()
+
