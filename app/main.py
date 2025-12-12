@@ -58,7 +58,7 @@ def search_blogger_posts(query: str):
             print(f"Blogger API error (search): {resp.status_code} - {resp.text}")
             return None
         data = resp.json()
-        return data.get("items", None)
+        return data.get("items", [])
     except Exception as e:
         print("Blogger search exception:", e)
         return None
@@ -109,7 +109,8 @@ async def assistant(payload: AskPayload):
             "type": "blog",
             "match": match_type,
             "title": first_post.get("title", ""),
-            "content": first_post.get("content", "")
+            "content": first_post.get("content", ""),
+            "url": first_post.get("url", "")
         }
 
     # 4 — Nothing found
