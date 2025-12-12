@@ -6,7 +6,9 @@ from pydantic import BaseModel
 
 app = FastAPI()
 
+# ------------------------------
 # CORS
+# ------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,17 +17,26 @@ app.add_middleware(
     allow_credentials=False,
 )
 
+# ------------------------------
 # Blogger config from env vars
+# ------------------------------
 BLOG_ID = os.getenv("BLOGGER_BLOG_ID")
 BLOGGER_API_KEY = os.getenv("BLOGGER_API_KEY")
 
-# ============================================================
-# Keyword replies (same as your version)
-# ============================================================
+if not BLOG_ID or not BLOGGER_API_KEY:
+    raise RuntimeError("BLOGGER_BLOG_ID and BLOGGER_API_KEY must be set as environment variables.")
 
-PREDEFINED_REPLIES = [...]
-# keep your same list here
-
+# ------------------------------
+# Predefined replies
+# ------------------------------
+PREDEFINED_REPLIES = [
+    {"keywords": ["hello", "hi", "hey"], "reply": "Hello! How can I help you today? 😊"},
+    {"keywords": ["good morning", "morning"], "reply": "Good morning! Hope your day starts amazing!"},
+    {"keywords": ["bye", "goodbye"], "reply": "Goodbye! Take care! 👋"},
+    {"keywords": ["thank you", "thanks"], "reply": "You're welcome! Happy to help! 😊"},
+    {"keywords": ["blog", "post", "article", "blogger"], "reply": "I can help you find blog posts or answer questions about Blogger!"},
+    # Add the rest of your PREDEFINED_REPLIES here...
+]
 
 def match_predefined_reply(text: str):
     text = text.lower().strip()
@@ -35,52 +46,50 @@ def match_predefined_reply(text: str):
                 return item["reply"]
     return None
 
-
-# ============================================================
-# BLOGGER API FUNCTIONS
-# ============================================================
-
+# ------------------------------
+# Blogger API functions
+# ------------------------------
 def search_blogger_posts(query: str):
     """Search posts using Blogger API."""
-    url = (
-        f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts/search"
-        f"?q={query}&key={API_KEY}"
-    )
-    resp = requests.get(url)
-    if resp.status_code != 200:
+    url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts/search?q={query}&key={BLOGGER_API_KEY}"
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code != 200:
+            print(f"Blogger API error: {resp.status_code} - {resp.text}")
+            return None
+        data = resp.json()
+        return data.get("items", None)
+    except Exception as e:
+        print("Blogger request exception:", e)
         return None
-    data = resp.json()
-    return data.get("items", None)
-
 
 def get_latest_post():
-    """Return most recent post."""
-    url = (
-        f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts"
-        f"?maxResults=1&key={API_KEY}"
-    )
-    resp = requests.get(url)
-    if resp.status_code != 200:
+    """Return the most recent post."""
+    url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts?maxResults=1&key={BLOGGER_API_KEY}"
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code != 200:
+            print(f"Blogger API error: {resp.status_code} - {resp.text}")
+            return None
+        data = resp.json()
+        items = data.get("items", [])
+        return items[0] if items else None
+    except Exception as e:
+        print("Blogger request exception:", e)
         return None
-    data = resp.json()
-    items = data.get("items", [])
-    return items[0] if items else None
 
-
-# ============================================================
-# API ROUTES
-# ============================================================
-
+# ------------------------------
+# API routes
+# ------------------------------
 class AskPayload(BaseModel):
     topic: str
     lang: str = "en"
-
 
 @app.post("/assistant")
 async def assistant(payload: AskPayload):
     query = payload.topic.strip()
 
-    # 1 — Predefined replies first
+    # 1 — Check predefined replies first
     predefined = match_predefined_reply(query)
     if predefined:
         return {
@@ -113,7 +122,6 @@ async def assistant(payload: AskPayload):
         "type": "none",
         "response": "No predefined answer and no blog posts found."
     }
-
 
 @app.get("/")
 async def root():
