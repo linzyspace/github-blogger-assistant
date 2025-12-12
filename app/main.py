@@ -35,7 +35,7 @@ PREDEFINED_REPLIES = [
     {"keywords": ["bye", "goodbye"], "reply": "Goodbye! Take care! 👋"},
     {"keywords": ["thank you", "thanks"], "reply": "You're welcome! Happy to help! 😊"},
     {"keywords": ["blog", "post", "article", "blogger"], "reply": "I can help you find blog posts or answer questions about Blogger!"},
-    # Add the rest of your PREDEFINED_REPLIES here...
+    # Add the rest of your predefined replies here...
 ]
 
 def match_predefined_reply(text: str):
@@ -55,12 +55,12 @@ def search_blogger_posts(query: str):
     try:
         resp = requests.get(url, timeout=10)
         if resp.status_code != 200:
-            print(f"Blogger API error: {resp.status_code} - {resp.text}")
+            print(f"Blogger API error (search): {resp.status_code} - {resp.text}")
             return None
         data = resp.json()
         return data.get("items", None)
     except Exception as e:
-        print("Blogger request exception:", e)
+        print("Blogger search exception:", e)
         return None
 
 def get_latest_post():
@@ -69,13 +69,13 @@ def get_latest_post():
     try:
         resp = requests.get(url, timeout=10)
         if resp.status_code != 200:
-            print(f"Blogger API error: {resp.status_code} - {resp.text}")
+            print(f"Blogger API error (latest): {resp.status_code} - {resp.text}")
             return None
         data = resp.json()
         items = data.get("items", [])
         return items[0] if items else None
     except Exception as e:
-        print("Blogger request exception:", e)
+        print("Blogger latest post exception:", e)
         return None
 
 # ------------------------------
@@ -92,36 +92,28 @@ async def assistant(payload: AskPayload):
     # 1 — Check predefined replies first
     predefined = match_predefined_reply(query)
     if predefined:
-        return {
-            "type": "predefined",
-            "response": predefined
-        }
+        return {"type": "predefined", "response": predefined}
 
     # 2 — Search Blogger by keyword
     posts = search_blogger_posts(query)
-    if posts:
-        return {
-            "type": "blog",
-            "match": "keyword",
-            "title": posts[0]["title"],
-            "content": posts[0].get("content", "")
-        }
+    if posts and len(posts) > 0:
+        first_post = posts[0]
+        match_type = "keyword"
+    else:
+        # 3 — Fallback to latest post if search fails
+        first_post = get_latest_post()
+        match_type = "latest" if first_post else None
 
-    # 3 — Fallback → latest post
-    latest = get_latest_post()
-    if latest:
+    if first_post:
         return {
             "type": "blog",
-            "match": "latest",
-            "title": latest["title"],
-            "content": latest.get("content", "")
+            "match": match_type,
+            "title": first_post.get("title", ""),
+            "content": first_post.get("content", "")
         }
 
     # 4 — Nothing found
-    return {
-        "type": "none",
-        "response": "No predefined answer and no blog posts found."
-    }
+    return {"type": "none", "response": "No predefined answer and no blog posts found."}
 
 @app.get("/")
 async def root():
