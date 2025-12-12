@@ -1,2 +1,12 @@
-- en
-- es
+languages:
+  en:
+    name: "English"
+    fallback: true
+  es:
+    name: "Spanish"
+  fr:
+    name: "French"
+  de:
+    name: "German"
+  zh:
+    name: "Chinese"
