@@ -26,16 +26,18 @@ BLOGGER_API_KEY = os.getenv("BLOGGER_API_KEY")
 if not BLOG_ID or not BLOGGER_API_KEY:
     raise RuntimeError("BLOGGER_BLOG_ID and BLOGGER_API_KEY must be set as environment variables.")
 
+print("BLOG_ID:", BLOG_ID)
+print("BLOGGER_API_KEY length:", len(BLOGGER_API_KEY))
+
 # ------------------------------
 # Predefined replies
 # ------------------------------
 PREDEFINED_REPLIES = [
     {"keywords": ["hello", "hi", "hey"], "reply": "Hello! How can I help you today? 😊"},
-    {"keywords": ["good morning", "morning"], "reply": "Good morning! Hope your day starts amazing!"},
     {"keywords": ["bye", "goodbye"], "reply": "Goodbye! Take care! 👋"},
     {"keywords": ["thank you", "thanks"], "reply": "You're welcome! Happy to help! 😊"},
     {"keywords": ["blog", "post", "article", "blogger"], "reply": "I can help you find blog posts or answer questions about Blogger!"},
-    # Add the rest of your predefined replies here...
+    # Add all your other predefined replies here...
 ]
 
 def match_predefined_reply(text: str):
@@ -50,28 +52,27 @@ def match_predefined_reply(text: str):
 # Blogger API functions
 # ------------------------------
 def search_blogger_posts(query: str):
-    """Search posts using Blogger API."""
     url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts/search?q={query}&key={BLOGGER_API_KEY}"
     try:
         resp = requests.get(url, timeout=10)
-        if resp.status_code != 200:
-            print(f"Blogger API error (search): {resp.status_code} - {resp.text}")
-            return None
         data = resp.json()
+        if "error" in data:
+            print("Blogger search API error:", data["error"])
+            return None
         return data.get("items", [])
     except Exception as e:
         print("Blogger search exception:", e)
         return None
 
 def get_latest_post():
-    """Return the most recent post."""
     url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts?maxResults=1&key={BLOGGER_API_KEY}"
     try:
         resp = requests.get(url, timeout=10)
-        if resp.status_code != 200:
-            print(f"Blogger API error (latest): {resp.status_code} - {resp.text}")
-            return None
         data = resp.json()
+        print("Latest post API response:", data)
+        if "error" in data:
+            print("Blogger latest post API error:", data["error"])
+            return None
         items = data.get("items", [])
         return items[0] if items else None
     except Exception as e:
@@ -89,12 +90,12 @@ class AskPayload(BaseModel):
 async def assistant(payload: AskPayload):
     query = payload.topic.strip()
 
-    # 1 — Check predefined replies first
+    # 1 — Predefined replies first
     predefined = match_predefined_reply(query)
     if predefined:
         return {"type": "predefined", "response": predefined}
 
-    # 2 — Search Blogger by keyword
+    # 2 — Search Blogger posts by keyword
     posts = search_blogger_posts(query)
     if posts and len(posts) > 0:
         first_post = posts[0]
@@ -119,3 +120,12 @@ async def assistant(payload: AskPayload):
 @app.get("/")
 async def root():
     return {"status": "ok"}
+
+# ------------------------------
+# Debug route to test Blogger API
+# ------------------------------
+@app.get("/debug-blogger")
+async def debug_blogger():
+    latest = get_latest_post()
+    search = search_blogger_posts("test")
+    return {"latest_post": latest, "search_test": search}
