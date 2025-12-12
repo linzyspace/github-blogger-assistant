@@ -1,13 +1,21 @@
 import os
-from dotenv import load_dotenv
+from functools import lru_cache
 
-# Load variables from .env file
-load_dotenv()
+class Settings:
+    BLOGGER_API_KEY: str
+    BLOG_ID: str
 
-class Config:
-    PORT = int(os.getenv("PORT", 5000))
-    BLOG_ID = os.getenv("BLOG_ID")
-    API_KEY = os.getenv("API_KEY")
+    def __init__(self):
+        self.BLOGGER_API_KEY = os.getenv("BLOGGER_API_KEY")
+        self.BLOG_ID = os.getenv("BLOG_ID")
 
-config = Config()
+        if not self.BLOGGER_API_KEY:
+            raise RuntimeError("BLOGGER_API_KEY environment variable not set")
 
+        if not self.BLOG_ID:
+            raise RuntimeError("BLOG_ID environment variable not set")
+
+
+@lru_cache()
+def get_settings():
+    return Settings()
